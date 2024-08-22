@@ -5,20 +5,9 @@ from subprocess import Popen, CREATE_NEW_CONSOLE, PIPE, STDOUT
 from multiprocessing.dummy import Pool  # thread pool
 import argparse
 
-# FILL WITH YOUR CAMERAS .SEQ FOLDER PATHS 
-CAM_DIR = {
-    1: 'C:\\Video\\cam1',
-    2: 'D:\\Video\\cam2',
-    3: 'E:\\Video\\cam3',
-    4: 'F:\\Video\\cam4'
-}
-
-# CHANGE CUDA_ID TO YOUR CUDA_ID
+CAM_DIR ='D:\\Video'
 CUDA_ID = {0: '196608', 1: '196609'}
-
-# CHANGE CLEXPORT_PATH TO YOUR CLEXPORT_PATH
 CLEXPORT_PATH = 'C:\\Program Files\\NorPix\\BatchProcessor\\CLExport.exe'
-
 EXPORTED_SEQ = 'exported_sequences.txt'
 
 def get_lines(process):
@@ -47,7 +36,11 @@ def get_seq_path(seq_dir, seq):
 
 def main(input_files, dest_folder):
     seq_to_cam = {}
-    for cam, cam_dir in CAM_DIR.items():
+    cameras_paths = [os.path.join(CAM_DIR, cam) for cam in os.listdir(CAM_DIR)]
+    #create a dictionary of cameras enumerated from 0
+    cam_dict =  {i:cam for i, cam in enumerate(cameras_paths)}
+    for cam, cam_dir in cam_dict.items():
+
         file_list = [f[:19] for f in os.listdir(cam_dir) if f.endswith('.seq')]
         for seq in file_list:
             if seq not in seq_to_cam:
@@ -71,21 +64,21 @@ def main(input_files, dest_folder):
             os.mkdir(export_path)
         commands = []
         for cam in seq_to_cam[seq]:
-            seq_path = get_seq_path(CAM_DIR[cam], seq)
+            seq_path = get_seq_path(cam_dict[cam], seq)
             cam_path = os.path.join(export_path, f'cam{cam}')
             if not os.path.exists(cam_path):
                 os.mkdir(cam_path)
             full_export_path = os.path.join(cam_path, f"{seq}.avi")
             exported_name = f'{seq}_cam{cam}'
             print(exported_name)
-            # CHOOSE -F TO CHANGE THE FORMAT OF THE EXPORTED FILE, RUN ON GPU (SENT MYSELF A MAIL HOWTO), ETC.
-            cmd = f'''"{CLEXPORT_PATH}" -i "{seq_path}" -o "{cam_path}" -of cam_{cam} -f avi'''
+            cmd = f'''"{CLEXPORT_PATH}" -i "{seq_path}" -o "{cam_path}" -of cam_{cam} -f mp4'''
             commands.append(cmd)
-       
+          
         procs_list = [Popen(shlex.split(cmd), universal_newlines=True, creationflags=CREATE_NEW_CONSOLE) for cmd in commands]
         exitcodes = [p.wait() for p in procs_list]
         write_to_file(EXPORTED_SEQ, seq)
         print(f"{seq} export complete")
+
 
 
 if __name__ == '__main__':
